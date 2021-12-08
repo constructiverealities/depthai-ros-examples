@@ -74,9 +74,15 @@ dai::Pipeline createPipeline(bool withDepth, bool lrcheck, bool extended, bool s
 int main(int argc, char** argv){
 
     ros::init(argc, argv, "stereo_node");
+
+    //Consider
+    // might need to tighten this up if multiple node are going to run.
+    // we'll need a pushdown namespace for the device
+    // see realsense example for this as they use namespaces and prefix parameters
     ros::NodeHandle pnh("~");
-    
-    std::string deviceName, mode;
+
+    std::string deviceName, mode, targetDevice;
+    std::boolean targetDeviceMode;
     std::string cameraParamUri;
     int badParams = 0;
     bool lrcheck, extended, subpixel, enableDepth;
@@ -91,7 +97,10 @@ int main(int argc, char** argv){
     badParams += !pnh.getParam("subpixel",  subpixel);
     badParams += !pnh.getParam("confidence",  confidence);
     badParams += !pnh.getParam("LRchecktresh",  LRchecktresh);
-    
+
+    //not considered for badParams because this will be an optional value
+    !pnh.getParam("TargetDevice",  targetDevice);   //the MXid of the target device
+    !pnh.getParam("TargetDeviceMode",  targetDeviceMode);  //  how to behave if the device is not available
 
     if (badParams > 0)
     {   
@@ -108,7 +117,28 @@ int main(int argc, char** argv){
 
     dai::Pipeline pipeline = createPipeline(enableDepth, lrcheck, extended, subpixel, confidence, LRchecktresh);
 
-    dai::Device device(pipeline);
+    if (targetDevice){
+        //ensure that the device is present AND available
+        //    - consider what to do if the device is present and not available,
+        //    is there any action that can be performed?
+        devices = dai.getAllAvailableDevices()
+        if (targetDevice in devices and device.state.XLINK_UNBOOTED ){
+            daiDevice::Device getDeviceByMxId(targetDevice)
+        }
+    }
+    else{
+        //determine whether the mode is:
+        if (targetDeviceMode=="mandatory"){
+            //  - hard fail (exit because the mandatory device is not available)
+            //FAIL!
+            raiseSomeErrorAndGoHome()
+        }
+        else if(targetDeviceMode=="preferred"){
+            //  - soft fail (grab the next available device
+            //go find another device
+            dai::Device device(pipeline);
+        }
+    }
 
     auto leftQueue = device.getOutputQueue("left", 30, false);
     auto rightQueue = device.getOutputQueue("right", 30, false);
